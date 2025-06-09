@@ -1,4 +1,4 @@
-# my_project/models/multipoint_model.py
+
 
 import torch
 import torch.nn as nn

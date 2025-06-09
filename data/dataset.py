@@ -1,4 +1,3 @@
-# my_project/data/dataset.py
 
 import os
 import numpy as np

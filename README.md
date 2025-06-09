@@ -1,60 +1,198 @@
-# RGB_D_Keypoint
+# RGB-D Multi-Point Detection (v1.3.1)
 
-# 📝 训练脚本版本更迭日志（Changelog）
+📅 Updated: 2025-06-09
 
-> 项目：多点检测模型训练脚本（基于 DFormer + 多模态 + 热图监督）
-> 格式参考语义化版本控制 `v主.次.修`（Major.Minor.Patch）
+本项目基于 DFormer 主干网络，实现了多点 RGB+Depth 关键点检测任务，具备高斯热图监督、坐标解码、联合损失优化、PCK/OKS 评估及可视化功能，结构规范、配置灵活。
 
----
-
-## 📌 v1.3.0 - 2025-06-06
-
-### ✨ 新增
-
-* 引入 `evaluate` 函数，对验证集进行 OKS 和 PCK 指标评估。
-* 加入验证阶段模型可视化结果保存（`output_dir/epoch_{:02d}_val_predictions.png`）。
-* 新增 OKS 作为主评估指标，用于保存最佳模型。
-
-### 🔧 改进
-
-* `CombinedLoss` 支持动态调节 `lambda_coord` 权重。
-* 模型保存从每轮保存更改为“只保存验证 OKS 最佳的模型”。
+<img src="D:\RGB_D_Keypoint\outputs\pred_Image__Rgb_54_point1_aug1.png" alt="pred_Image__Rgb_54_point1_aug1" style="zoom:33%;" />
 
 ---
 
-## 📌 v1.2.0 - 2025-06-05
+## 📁 一、项目模块划分
 
-### ✨ 新增
-
-* 支持从指定路径加载预训练权重 `load_pretrained_weights()`。
-* 添加冻结主干网络参数逻辑，实现逐步微调（前 `epoch=70` 只训练头部）。
-
-### 🐛 修复
-
-* 修复由于 `base_model` 输出维度不匹配 `DFormerMultiPoint` 导致的 `mat1 and mat2 shapes cannot be multiplied` 报错。
-
----
-
-## 📌 v1.1.0 - 2025-06-04
-
-### ✨ 新增
-
-* 添加 `CombinedLoss`，综合热图 MSE 与坐标 SmoothL1 Loss。
-* 模型结构首次引入 `DFormerMultiPoint`，用于多点热图输出与坐标回归。
-
-### 🔧 改进
-
-* `train_one_epoch` 支持返回 OKS 与 PCK。
+```plaintext
+代码主要模块：
+├── config/           # 所有训练、模型、数据参数集中配置
+├── data/             # 数据增强、热图生成、多点数据集定义
+├── models/           # DFormer 主干 + 检测头 + 完整结构封装
+├── losses/           # 热图损失 + 坐标损失 + 联合损失
+├── utils/            # PCK、OKS、可视化工具
+├── train.py          # 主训练入口，自动加载配置并训练
+```
 
 ---
 
-## 📌 v1.0.0 - 2025-06-02
+## 🧠 二、模型结构描述
 
-### 🚀 初始版本
+```plaintext
+整体结构：
+[RGB + Depth 输入]
+        ↓
+    DFormer 编码器（Transformer）
+        ↓
+   Feature Map (B, C, H, W)
+        ↓
+   HeatmapHead：
+     - 上采样 ×2（ConvTranspose2d）
+     - 1x1 卷积输出 num_points 个通道
+        ↓
+   热图 (B, num_points, 256, 256)
+        ↓
+   Softmax weighted average → 坐标输出
+```
 
-* 支持 RGB 与深度图双模态输入。
-* 构建基本训练流程：加载数据、构建模型、优化器、损失函数。
-* 实现最基本的训练与评估框架。
+支持联合输出：
+
+* 热图 (监督用)
+* 归一化坐标 (评估用)
 
 ---
 
+## ⚙️ 三、训练配置（集中于 `config/nyu_dformerv2_config.py`）
+
+| 配置项       | 示例值 / 描述                                               |
+| --------- | ------------------------------------------------------ |
+| 图像尺寸      | `image_size=(256, 256)`                                |
+| 关键点数      | `num_points=1`                                         |
+| 高斯核标准差 σ  | `gaussian_sigma=3.0`                                   |
+| 模型结构      | `cfg_name='local_configs.NYUDepthv2.DFormerv2_L'`      |
+| 预训练权重路径   | `'checkpoints/pretrained/DFormerv2_Large_NYU.pth'`     |
+| 训练集CSV    | `'my_dataset_3/train.csv'`                             |
+| RGB/深度图目录 | `'my_dataset_3/rgb'`, `'my_dataset_3/depth'`           |
+| 联合损失权重    | `heatmap_weight=1.0`, `coord_weight=0.1`               |
+| 批大小       | `batch_size=16`                                        |
+| 总训练轮数     | `total_epochs=100`                                     |
+| 冻结编码器轮数   | `freeze_epochs=70`                                     |
+| 学习率配置     | `lr_encoder=1e-5`, `lr_head=5e-4`, `weight_decay=1e-4` |
+| 学习率调度器    | `CosineAnnealingLR`, `T_max=30`                        |
+| 模型保存策略    | `save_best_by='pck'`, `save_last=True`                 |
+| 可视化周期与路径  | 每 `5` 轮 → `outputs/visualizations/`                    |
+| 模型保存路径    | `best_model_path='outputs/best_model.pth'` 等           |
+
+---
+
+## 🧪 四、损失函数设计
+
+| 类型   | 实现方式                       | 描述          | 权重  |
+| ---- | -------------------------- | ----------- | --- |
+| 热图损失 | `MSELoss(reduction='sum')` | 每个关键点的热图监督  | 1.0 |
+| 坐标损失 | `SmoothL1Loss` + 反归一化      | 坐标预测在原图上的误差 | 0.1 |
+| 联合损失 | `HeatmapLoss + CoordLoss`  | 最终总损失       | -   |
+
+---
+
+## 🧱 五、数据增强策略
+
+| 操作       | 参数 / 范围            | 作用      |
+| -------- | ------------------ | ------- |
+| 水平翻转     | 50% 概率             | 增强左右对称  |
+| 垂直翻转     | 50% 概率             | 增强上下对称  |
+| 随机旋转     | ±15°，50% 概率        | 增强旋转不变性 |
+| 亮度/对比度调整 | \[0.8, 1.2]，50% 概率 | 提高光照鲁棒性 |
+
+---
+
+## 📊 六、训练指标
+
+| 指标名称      | 训练集   | 验证集   | 说明               |
+| --------- | ----- | ----- | ---------------- |
+| 联合损失      | 0.082 | 0.095 | 越低越好             |
+| PCK\@0.05 | 0.89  | 0.85  | 距离真实点<5%图像宽度的点比例 |
+| OKS       | 0.92  | 0.88  | 热图重合度相似性         |
+| 像素准确率     | 0.91  | 0.87  | 距离真实点<10像素的点比例   |
+
+> 注：实际结果依赖于具体数据集与训练参数，此处为示意。
+
+---
+
+## 🚀 七、使用方法
+
+### 1. 安装依赖
+
+```bash
+pip install mmcv-full -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
+pip install -r requirements.txt
+```
+
+> 如使用本地 DFormer（包含 `mmseg/`），需在 `train.py` 顶部加入：
+>
+> ```python
+> sys.path.append("DFormer")
+> ```
+
+---
+
+### 2. 训练模型
+
+```bash
+python train.py
+```
+
+将会：
+
+* 自动加载配置
+* 保存可视化结果于 `outputs/visualizations/`
+* 按 `config["save_best_by"]` 策略保存模型
+
+---
+
+### 3. 可视化输出
+
+* 热图、预测点、GT 点将可视化保存每 `n` 轮
+* 图像位于 `outputs/visualizations/epoch_*.png`
+
+---
+
+## 🧬 八、伪代码（训练流程）
+
+```python
+加载配置 → 初始化模型 → 加载预训练权重
+冻结编码器（前 N 轮）
+for epoch in range(total_epochs):
+    解冻编码器（可选）
+    for batch in train_loader:
+        → 模型前向 + 损失计算 + 反向传播
+    for batch in val_loader:
+        → 评估 PCK、OKS
+        → 每 N 轮保存可视化
+    若当前指标最优 → 保存模型
+    若为最后一轮 → 保存最终模型（可选）
+```
+
+---
+
+## 🧠 九、备注与扩展建议
+
+* [ ] 支持多点标注（num\_points > 1）
+* [ ] 添加 `test.py` 进行单张图像推理
+* [ ] 支持 `yaml` 或 `argparse` 动态配置
+
+---
+
+## 📎 引用与参考
+
+* [DFormer: Transformer-Based RGB-D Segmentation](https://github.com/zcablii/DFormer)
+* [MMSegmentation](https://github.com/open-mmlab/mmsegmentation)
+
+---
+
+## 👤 Maintainer
+
+**Chen Mengjun**
+
+如需帮助请通过 issue 或邮件联系，谢谢支持！
+
+```
+
+---
+
+### ✅ 说明：
+
+- 已完全适配你当前的模块结构与功能实现。
+- 中英文混排适中，适合开源发布或项目交接。
+- 可根据未来加入推理脚本、导出模型等功能进行增补。
+
+---
+
+需要我为你生成配套的 `requirements.txt` 文件或 `test.py` 脚本？只需回复「生成 requirements」或「写 test.py」。
+```
