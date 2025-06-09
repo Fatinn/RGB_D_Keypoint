@@ -4,7 +4,7 @@
 
 本项目基于 DFormer 主干网络，实现了多点 RGB+Depth 关键点检测任务，具备高斯热图监督、坐标解码、联合损失优化、PCK/OKS 评估及可视化功能，结构规范、配置灵活。
 
-<img src="D:\RGB_D_Keypoint\outputs\pred_Image__Rgb_54_point1_aug1.png" alt="pred_Image__Rgb_54_point1_aug1" style="zoom:33%;" />
+<img src="outputs\pred_Image__Rgb_54_point1_aug1.png" style="zoom:33%;" />
 
 ---
 
