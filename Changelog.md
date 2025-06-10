@@ -9,7 +9,7 @@
 * 将原型产品进行解耦，分离部件。
 
 * ```
-  my_project/
+  RGB_D_Keypoint/
   ├── config/
   │   └── nyu_dformerv2_config.py
   ├── data/
