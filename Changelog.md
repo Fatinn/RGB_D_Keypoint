@@ -11,7 +11,7 @@
 * ```
   RGB_D_Keypoint/
   ├── config/
-  │   └── nyu_dformerv2_config.py
+  │   └── config.py
   ├── data/
   │   ├── augmentation.py
   │   └── dataset.py

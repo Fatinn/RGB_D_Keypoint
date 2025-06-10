@@ -50,24 +50,24 @@
 
 ## ⚙️ 三、训练配置（集中于 `config/config.py`）
 
-| 配置项       | 示例值 / 描述                                               |
-| --------- | ------------------------------------------------------ |
-| 图像尺寸      | `image_size=(256, 256)`                                |
-| 关键点数      | `num_points=1`                                         |
-| 高斯核标准差 σ  | `gaussian_sigma=3.0`                                   |
-| 模型结构      | `cfg_name='local_configs.NYUDepthv2.DFormerv2_L'`      |
+| 配置项           | 示例值 / 描述                                          |
+| ---------------- | ------------------------------------------------------ |
+| 图像尺寸         | `image_size=(256, 256)`                                |
+| 关键点数         | `num_points=1`                                         |
+| 高斯核标准差 σ   | `gaussian_sigma=3.0`                                   |
+| 模型结构         | `cfg_name='local_configs.NYUDepthv2.DFormerv2_L'`      |
 | 预训练权重路径   | `'checkpoints/pretrained/DFormerv2_Large_NYU.pth'`     |
-| 训练集CSV    | `'my_dataset_3/train.csv'`                             |
-| RGB/深度图目录 | `'my_dataset_3/rgb'`, `'my_dataset_3/depth'`           |
-| 联合损失权重    | `heatmap_weight=1.0`, `coord_weight=0.1`               |
-| 批大小       | `batch_size=16`                                        |
-| 总训练轮数     | `total_epochs=100`                                     |
+| 训练集CSV        | `'dataset/train.csv'`                                  |
+| RGB/深度图目录   | `'dataset/rgb'`, `'dataset/depth'`                     |
+| 联合损失权重     | `heatmap_weight=1.0`, `coord_weight=0.1`               |
+| 批大小           | `batch_size=16`                                        |
+| 总训练轮数       | `total_epochs=100`                                     |
 | 冻结编码器轮数   | `freeze_epochs=70`                                     |
-| 学习率配置     | `lr_encoder=1e-5`, `lr_head=5e-4`, `weight_decay=1e-4` |
-| 学习率调度器    | `CosineAnnealingLR`, `T_max=30`                        |
-| 模型保存策略    | `save_best_by='pck'`, `save_last=True`                 |
-| 可视化周期与路径  | 每 `5` 轮 → `outputs/visualizations/`                    |
-| 模型保存路径    | `best_model_path='outputs/best_model.pth'` 等           |
+| 学习率配置       | `lr_encoder=1e-5`, `lr_head=5e-4`, `weight_decay=1e-4` |
+| 学习率调度器     | `CosineAnnealingLR`, `T_max=30`                        |
+| 模型保存策略     | `save_best_by='pck'`, `save_last=True`                 |
+| 可视化周期与路径 | 每 `5` 轮 → `outputs/visualizations/`                  |
+| 模型保存路径     | `best_model_path='outputs/best_model.pth'` 等          |
 
 ---
 
@@ -96,9 +96,9 @@
 
 | 指标名称  | 训练集 | 验证集 | 说明                          |
 | --------- | ------ | ------ | ----------------------------- |
-| 联合损失  | 0.082  | 0.095  | 越低越好                      |
-| PCK\@0.05 | 0.89   | 0.85   | 距离真实点<5%图像宽度的点比例 |
-| OKS       | 0.92   | 0.88   | 热图重合度相似性              |
+| 联合损失  | 7.82   | 10.095 | 越低越好                      |
+| PCK\@0.05 | 0.9212 | 0.9166 | 距离真实点<5%图像宽度的点比例 |
+| OKS       | 0.9256 | 0.9235 | 热图重合度相似性              |
 
 > 注：val中的工件在训练中见过
 
