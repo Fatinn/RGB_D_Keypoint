@@ -11,24 +11,17 @@ class DFormerMultiPoint(nn.Module):
         self.heatmap_size = heatmap_size
 
         self.heatmap_head = HeatmapHead(
-            channels=[112, 224, 448, 640],
+            in_channels=112,  # 默认输出通道数为112，可根据实际模型修改
             num_points=num_points,
+            heatmap_size=heatmap_size
         )
 
     def forward(self, rgb: torch.Tensor, depth: torch.Tensor):
-        feats = self.encoder(rgb, depth)
-        if isinstance(feats, tuple) or isinstance(feats, list):
-            # 确保返回四级特征
-            if len(feats) == 4:
-                c1, c2, c3, c4 = feats
-                # print("feats shape: ", c1.shape, c2.shape, c3.shape, c4.shape)
-            else:
-                # 如果返回结构不同，请调整此处解析逻辑
-                raise ValueError("Backbone output feature count != 4, got {}".format(len(feats)))
-        else:
-            raise ValueError("Backbone output is not tuple or list")
+        feat = self.encoder(rgb, depth)
+        if isinstance(feat, tuple):
+            feat = feat[0]
 
-        heatmaps = self.heatmap_head([c1, c2, c3, c4])
+        heatmaps = self.heatmap_head(feat)
         coords = self.get_keypoints_from_heatmaps(heatmaps)
 
         return {
@@ -41,7 +34,7 @@ class DFormerMultiPoint(nn.Module):
         heatmaps_flat = heatmaps.view(B, N, -1)
 
         max_vals, _ = torch.max(heatmaps_flat, dim=2, keepdim=True)
-        exp_maps = torch.exp(128 * (heatmaps_flat - max_vals))
+        exp_maps = torch.exp(256 * (heatmaps_flat - max_vals))
         softmax_maps = exp_maps / (exp_maps.sum(dim=2, keepdim=True) + 1e-10)
 
         grid_y, grid_x = torch.meshgrid(
@@ -60,10 +53,12 @@ class DFormerMultiPoint(nn.Module):
 
 
 def freeze_encoder(model: nn.Module):
+    """冻结模型编码器部分"""
     for param in model.encoder.parameters():
         param.requires_grad = False
 
 
 def unfreeze_encoder(model: nn.Module):
+    """解冻模型编码器部分"""
     for param in model.encoder.parameters():
         param.requires_grad = True

@@ -10,6 +10,7 @@ class DFormerMultiPoint(nn.Module):
         self.num_points = num_points
         self.heatmap_size = heatmap_size
 
+        # 使用 backbone channels，根据 DFormerv2_L 修改，其他型号按需调整
         self.heatmap_head = HeatmapHead(
             channels=[112, 224, 448, 640],
             num_points=num_points,

@@ -1,3 +1,5 @@
+# my_project/train.py
+
 import os
 import sys
 import torch
@@ -88,7 +90,6 @@ def train():
 
         model.train()
         total_loss = 0
-        batch_count = 0
 
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1} [Train]"):
             rgb = batch["rgb"].to(DEVICE)
@@ -104,12 +105,8 @@ def train():
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
-            
-            batch_size = rgb.size(0)
-            total_loss += loss.item() * batch_size
-            batch_count += batch_size
-        val_pck = 0
-        val_oks = 0
+            total_loss += loss.item() * rgb.size(0)
+
         # 验证阶段
         model.eval()
         with torch.no_grad():
@@ -137,14 +134,9 @@ def train():
                     )
 
         scheduler.step()
-        avg_train_loss = total_loss / batch_count
         val_pck /= len(val_set)
         val_oks /= len(val_set)
-        print(f"\nEpoch {epoch+1}/{config['total_epochs']} - "
-              f"Loss: {avg_train_loss:.4f}, "
-              f"Val PCK: {val_pck:.4f}, "
-              f"Val OKS: {val_oks:.4f}")
-        print("-" * 50)
+        print(f"Epoch {epoch+1}: Val PCK@0.05 = {val_pck:.4f}, OKS = {val_oks:.4f}")
 
         # 保存最佳模型
         if (

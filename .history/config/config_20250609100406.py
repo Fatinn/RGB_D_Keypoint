@@ -1,4 +1,3 @@
-# my_project/config/nyu_dformerv2_config.py
 
 C = {
     "cfg_name": "DFormer.local_configs.NYUDepthv2.DFormerv2_L",
@@ -11,18 +10,17 @@ C = {
     "num_points": 1,
 
      # --- 训练控制 ---
-    "freeze_epochs": 0,
-    "total_epochs": 50,
+    "freeze_epochs": 55,
+    "total_epochs": 100,
     "batch_size": 16,
-    "num_workers": 8,
+    "num_workers": 4,
     "val_num_workers": 2,
-    "print_freq": 1,
 
     # --- 学习率与优化器 ---
-    "lr_encoder": 6e-5,
-    "lr_head": 1e-4,
+    "lr_encoder": 1e-5,
+    "lr_head": 5e-4,
     "weight_decay": 1e-4,
-    "scheduler_T_max": 20,
+    "scheduler_T_max": 30,
     "scheduler_eta_min": 1e-6,
 
     # --- 损失权重 ---
@@ -31,7 +29,7 @@ C = {
 
     # --- 数据路径 ---
     "train_csv": "dataset/train.csv",
-    "val_csv":   "dataset/val_clear.csv",
+    "val_csv":   "dataset/val.csv",
     "rgb_dir":   "dataset/rgb",
     "depth_dir": "dataset/depth",
 
@@ -43,6 +41,6 @@ C = {
     # === 模型保存配置 ===
     "save_best_by": "pck",  # 可选："pck"、"loss"、"oks"
     "save_last": True,      # 是否保存最后一个 epoch 的模型
-    "best_model_path": "outputs/best_model_v1_4.pth",
-    "last_model_path": "outputs/last_model_v1_4.pth"
+    "best_model_path": "outputs/best_model.pth",
+    "last_model_path": "outputs/last_model.pth"
 }

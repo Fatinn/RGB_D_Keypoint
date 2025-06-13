@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm import tqdm
 
+# 设置 DFormer 路径（若 mmseg 不在 site-packages 中）
 sys.path.append(os.path.join(os.path.dirname(__file__), "DFormer"))
 
 from config.config import C as config

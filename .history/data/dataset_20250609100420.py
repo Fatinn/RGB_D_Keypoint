@@ -1,3 +1,4 @@
+
 import os
 import numpy as np
 import torch
@@ -16,17 +17,6 @@ def generate_gaussian_heatmap(center_x, center_y, height, width, sigma=3.0):
     heatmap = np.exp(-((x - center_x) ** 2 + (y - center_y) ** 2) / (2 * sigma ** 2))
     return heatmap
 
-def enhance_depth_contrast(depth, gain=5.0):
-    """
-    增强深度图对比度，使深度变化更明显。
-    """
-    d_min, d_max = np.min(depth), np.max(depth)
-    if d_max - d_min < 1e-3:
-        return depth.astype(np.float32) / 255.0  # 几乎无变化，直接归一化
-
-    depth_normalized = (depth - d_min) / (d_max - d_min)
-    depth_enhanced = np.clip(depth_normalized * gain, 0, 1)
-    return depth_enhanced.astype(np.float32)
 
 def generate_target_heatmaps(points, height, width, sigma=3.0):
     """
@@ -87,12 +77,12 @@ class MultiPointDataset(Dataset):
         rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
 
         depth = cv2.imread(depth_path, cv2.IMREAD_GRAYSCALE)
-        depth = cv2.resize(depth, self.img_size[::-1])
-        depth = enhance_depth_contrast(depth, gain=5.0)  # 拉大深度差异
+        if depth is None:
+            depth = np.zeros((orig_h, orig_w), dtype=np.uint8)
 
         rgb = cv2.resize(rgb, self.img_size[::-1])
+        depth = cv2.resize(depth, self.img_size[::-1])
 
-        # 坐标缩放
         points = []
         for x, y in self.samples[filename]:
             x_scaled = x * (self.img_size[0] / orig_w)
@@ -100,10 +90,10 @@ class MultiPointDataset(Dataset):
             points.append((x_scaled, y_scaled))
         points = points[:self.max_points]
 
-        # 归一化图像和深度
         rgb_norm = rgb.astype(np.float32) / 255.0
         rgb_norm = (rgb_norm - np.array(self.config["norm_mean"])) / np.array(self.config["norm_std"])
-        depth_norm = (depth - 0.5) / 0.25  # 新归一化方式，增强后为中心 0
+        depth_norm = depth.astype(np.float32) / 255.0
+        depth_norm = (depth_norm - 0.48) / 0.28
 
         rgb_tensor = torch.from_numpy(rgb_norm).permute(2, 0, 1).float()
         depth_tensor = torch.from_numpy(depth_norm).unsqueeze(0).float()
